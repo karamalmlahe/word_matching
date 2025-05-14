@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+    <meta charset="UTF-8">
+    <title>משחק התאמת מילים</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #f0f8ff;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            direction: rtl;
+        }
+        h1 {
+            color: #3366cc;
+            margin-bottom: 30px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .game-area {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .column {
+            width: 45%;
+        }
+        .word-card {
+            background-color: #e0eaff;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .word-card:hover {
+            background-color: #c0d6ff;
+        }
+        .selected {
+            background-color: #ffcc66;
+        }
+        .matched {
+            background-color: #99ff99;
+            cursor: default;
+        }
+        .controls {
+            margin-top: 20px;
+        }
+        .score {
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        button {
+            background-color: #3366cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #254e99;
+        }
+        .game-mode {
+            margin-bottom: 20px;
+        }
+        .feedback {
+            height: 30px;
+            margin: 10px 0;
+            font-weight: bold;
+            color: #3366cc;
+        }
+        .game-complete {
+            font-size: 24px;
+            color: #33cc33;
+            margin: 20px 0;
+            font-weight: bold;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>משחק התאמת מילים</h1>
+        
+        <div class="game-mode">
+            <button id="antonyms-btn" class="active">מילים והפכים</button>
+            <button id="synonyms-btn">מילים ונרדפות</button>
+        </div>
+        
+        <div class="score">ניקוד: <span id="score">0</span></div>
+        
+        <div class="feedback" id="feedback"></div>
+        
+        <div class="game-area">
+            <div class="column" id="words-column">
+                <!-- מילים יתווספו כאן -->
+            </div>
+            <div class="column" id="definitions-column">
+                <!-- פירושים יתווספו כאן -->
+            </div>
+        </div>
+        
+        <div class="game-complete" id="game-complete">
+            כל הכבוד! השלמת את המשחק!
+        </div>
+        
+        <div class="controls">
+            <button id="check-btn">בדוק התאמה</button>
+            <button id="new-game-btn">משחק חדש</button>
+        </div>
+    </div>
+
+    <script>
+        // נתונים - מילים והפכים
+        const antonyms = [
+            { word: "גדול", opposite: "קטן" },
+            { word: "חם", opposite: "קר" },
+            { word: "מהיר", opposite: "איטי" },
+            { word: "חכם", opposite: "טיפש" },
+            { word: "עשיר", opposite: "עני" },
+            { word: "אור", opposite: "חושך" },
+            { word: "התחלה", opposite: "סוף" },
+            { word: "שמחה", opposite: "עצב" },
+            { word: "מתוק", opposite: "מר" },
+            { word: "חזק", opposite: "חלש" }
+        ];
+
+        // נתונים - מילים ונרדפים
+        const synonyms = [
+            { word: "גדול", synonym: "ענק" },
+            { word: "יפה", synonym: "נאה" },
+            { word: "מהיר", synonym: "זריז" },
+            { word: "חכם", synonym: "נבון" },
+            { word: "שמח", synonym: "עליז" },
+            { word: "עייף", synonym: "תשוש" },
+            { word: "קשה", synonym: "מאתגר" },
+            { word: "חשוב", synonym: "משמעותי" },
+            { word: "בית", synonym: "דירה" },
+            { word: "אוכל", synonym: "מזון" }
+        ];
+
+        let currentMode = 'antonyms';
+        let currentWords = [];
+        let score = 0;
+        let selectedWord = null;
+        let selectedDefinition = null;
+        let matchedPairs = 0;
+
+        const wordsColumn = document.getElementById('words-column');
+        const definitionsColumn = document.getElementById('definitions-column');
+        const feedbackElement = document.getElementById('feedback');
+        const scoreElement = document.getElementById('score');
+        const gameCompleteElement = document.getElementById('game-complete');
+        
+        // כפתורים
+        const checkBtn = document.getElementById('check-btn');
+        const newGameBtn = document.getElementById('new-game-btn');
+        const antonymsBtn = document.getElementById('antonyms-btn');
+        const synonymsBtn = document.getElementById('synonyms-btn');
+
+        // אתחול המשחק
+        function initGame() {
+            // איפוס משתנים
+            selectedWord = null;
+            selectedDefinition = null;
+            matchedPairs = 0;
+            gameCompleteElement.style.display = 'none';
+            
+            // בחירת הנתונים הרלוונטיים בהתאם למצב המשחק
+            const sourceData = currentMode === 'antonyms' ? antonyms : synonyms;
+            
+            // יצירת העתק של המערך כדי לא לפגוע במקור
+            currentWords = JSON.parse(JSON.stringify(sourceData));
+            
+            // ערבוב המילים
+            shuffleArray(currentWords);
+            
+            // יצירת העתק ושליפת ההגדרות/מילים נגדיות בסדר מעורבב
+            const definitions = currentWords.map(pair => {
+                return currentMode === 'antonyms' ? pair.opposite : pair.synonym;
+            });
+            shuffleArray(definitions);
+            
+            // הצגת המילים על המסך
+            renderWords(currentWords);
+            renderDefinitions(definitions);
+        }
+
+        // פונקציה לערבוב מערך
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // הצגת המילים
+        function renderWords(words) {
+            wordsColumn.innerHTML = '';
+            words.forEach((item, index) => {
+                if (!item.matched) {
+                    const wordElement = document.createElement('div');
+                    wordElement.classList.add('word-card');
+                    wordElement.innerText = item.word;
+                    wordElement.dataset.index = index;
+                    
+                    wordElement.addEventListener('click', function() {
+                        if (item.matched) return;
+                        
+                        // איפוס בחירה קודמת אם יש
+                        const previousSelected = wordsColumn.querySelector('.selected');
+                        if (previousSelected) {
+                            previousSelected.classList.remove('selected');
+                        }
+                        
+                        // סימון הבחירה החדשה
+                        wordElement.classList.add('selected');
+                        selectedWord = {
+                            index: index,
+                            element: wordElement,
+                            word: item.word
+                        };
+                    });
+                    
+                    wordsColumn.appendChild(wordElement);
+                }
+            });
+        }
+
+        // הצגת ההגדרות
+        function renderDefinitions(definitions) {
+            definitionsColumn.innerHTML = '';
+            definitions.forEach((definition, index) => {
+                const defElement = document.createElement('div');
+                defElement.classList.add('word-card');
+                defElement.innerText = definition;
+                defElement.dataset.definition = definition;
+                
+                defElement.addEventListener('click', function() {
+                    // בדיקה אם ההגדרה כבר הותאמה
+                    if (defElement.classList.contains('matched')) return;
+                    
+                    // איפוס בחירה קודמת אם יש
+                    const previousSelected = definitionsColumn.querySelector('.selected');
+                    if (previousSelected) {
+                        previousSelected.classList.remove('selected');
+                    }
+                    
+                    // סימון הבחירה החדשה
+                    defElement.classList.add('selected');
+                    selectedDefinition = {
+                        element: defElement,
+                        definition: definition
+                    };
+                });
+                
+                definitionsColumn.appendChild(defElement);
+            });
+        }
+
+        // בדיקת התאמה
+        function checkMatch() {
+            if (!selectedWord || !selectedDefinition) {
+                feedbackElement.innerText = 'יש לבחור מילה והגדרה לפני בדיקת התאמה';
+                return;
+            }
+            
+            const word = currentWords[selectedWord.index];
+            const correctDefinition = currentMode === 'antonyms' ? word.opposite : word.synonym;
+            
+            if (selectedDefinition.definition === correctDefinition) {
+                // התאמה נכונה
+                feedbackElement.innerText = 'כל הכבוד! התאמה נכונה!';
+                feedbackElement.style.color = 'green';
+                
+                selectedWord.element.classList.remove('selected');
+                selectedWord.element.classList.add('matched');
+                selectedDefinition.element.classList.remove('selected');
+                selectedDefinition.element.classList.add('matched');
+                
+                // עדכון סטטוס המילה כמותאמת
+                currentWords[selectedWord.index].matched = true;
+                
+                // עדכון ניקוד
+                score += 10;
+                scoreElement.innerText = score;
+                
+                // בדיקה אם המשחק הסתיים
+                matchedPairs++;
+                if (matchedPairs === currentWords.length) {
+                    gameCompleteElement.style.display = 'block';
+                }
+            } else {
+                // התאמה שגויה
+                feedbackElement.innerText = 'נסה שוב, זו אינה התאמה נכונה';
+                feedbackElement.style.color = 'red';
+                
+                selectedWord.element.classList.remove('selected');
+                selectedDefinition.element.classList.remove('selected');
+                
+                // הורדת ניקוד על טעות
+                score = Math.max(0, score - 2);
+                scoreElement.innerText = score;
+            }
+            
+            // איפוס הבחירות
+            selectedWord = null;
+            selectedDefinition = null;
+        }
+
+        // אירועי לחיצה על כפתורים
+        checkBtn.addEventListener('click', checkMatch);
+        newGameBtn.addEventListener('click', function() {
+            initGame();
+            feedbackElement.innerText = '';
+        });
+        
+        antonymsBtn.addEventListener('click', function() {
+            currentMode = 'antonyms';
+            antonymsBtn.classList.add('active');
+            synonymsBtn.classList.remove('active');
+            initGame();
+            feedbackElement.innerText = '';
+        });
+        
+        synonymsBtn.addEventListener('click', function() {
+            currentMode = 'synonyms';
+            synonymsBtn.classList.add('active');
+            antonymsBtn.classList.remove('active');
+            initGame();
+            feedbackElement.innerText = '';
+        });
+
+        // התחלת המשחק
+        initGame();
+    </script>
+</body>
+</html>
